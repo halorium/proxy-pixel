@@ -6,6 +6,8 @@ import (
 	"flag"
 	"fmt"
 	"image"
+	"image/color"
+	"image/jpeg"
 	_ "image/jpeg"
 	"image/png"
 	_ "image/png"
@@ -59,57 +61,38 @@ func convertImage(res *http.Response) error {
 		return err
 	}
 
+	// colorPalette := img.ColorModel()
+
 	// create grayscale image
-	// bounds := img.Bounds()
-	// grayScale := image.NewGray(
-	// 	image.Rectangle{
-	// 		image.Point{bounds.Min.X, bounds.Min.Y},
-	// 		image.Point{bounds.Max.X, bounds.Max.Y}})
+	bounds := img.Bounds()
+	grayScale := image.NewGray(
+		image.Rectangle{
+			image.Point{bounds.Min.X, bounds.Min.Y},
+			image.Point{bounds.Max.X, bounds.Max.Y}})
 
-	// for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-	// 	for x := bounds.Min.X; x < bounds.Max.X; x++ {
-	// 		imageColor := img.At(x, y)
-	// 		rr, gg, bb, _ := imageColor.RGBA()
-	// 		r := math.Pow(float64(rr), 2.2)
-	// 		g := math.Pow(float64(gg), 2.2)
-	// 		b := math.Pow(float64(bb), 2.2)
-	// 		m := math.Pow(0.2125*r+0.7154*g+0.0721*b, 1/2.2)
-	// 		Y := uint16(m + 0.5)
-	// 		grayColor := color.Gray{uint8(Y >> 8)}
-	// 		grayScale.Set(x, y, grayColor)
-	// 	}
-	// }
-
-	// fmt.Printf("grayScale: %#v\n", grayScale)
-
-	// for x := 0; x < w; x++ {
-	// 	for y := 0; y < h; y++ {
-	// 		imageColor := img.At(x, y)
-	// 		rr, gg, bb, _ := imageColor.RGBA()
-	// 		r := math.Pow(float64(rr), 2.2)
-	// 		g := math.Pow(float64(gg), 2.2)
-	// 		b := math.Pow(float64(bb), 2.2)
-	// 		m := math.Pow(0.2125*r+0.7154*g+0.0721*b, 1/2.2)
-	// 		Y := uint16(m + 0.5)
-	// 		grayColor := color.Gray{uint8(Y >> 8)}
-	// 		grayScale.Set(x, y, grayColor)
-	// 	}
-	// }
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			oldPixel := img.At(x, y)
+			pixel := color.GrayModel.Convert(oldPixel)
+			grayScale.Set(x, y, pixel)
+		}
+	}
 
 	var b bytes.Buffer
 	newImg := bufio.NewWriter(&b)
 
 	if imgType == "png" {
-		// err = png.Encode(newImg, grayScale)
-		err = png.Encode(newImg, img)
+		err = png.Encode(newImg, grayScale)
 		if err != nil {
 			return err
 		}
-	} else {
-		fmt.Printf("img type: %#v\n", imgType)
+	} else if imgType == "jpeg" {
+		err = jpeg.Encode(newImg, grayScale, &jpeg.Options{})
+		if err != nil {
+			return err
+		}
 	}
 
-	res.Body.Close()
 	res.Body = ioutil.NopCloser(bytes.NewReader(b.Bytes()))
 
 	return nil
